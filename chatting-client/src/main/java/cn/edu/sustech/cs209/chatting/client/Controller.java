@@ -12,6 +12,11 @@ import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
 import java.net.URL;
 import java.util.Objects;
 import java.util.Optional;
@@ -19,11 +24,13 @@ import java.util.ResourceBundle;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Controller implements Initializable {
-
     @FXML
     ListView<Message> chatContentList;
-
-    String username;
+    private String username;
+    private static final String HOST = "localhost";
+    private static final int PORT = 8888;
+    private BufferedReader in;
+    private PrintWriter out;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -35,11 +42,25 @@ public class Controller implements Initializable {
 
         Optional<String> input = dialog.showAndWait();
         if (input.isPresent() && !input.get().isEmpty()) {
-            /*
-               TODO: Check if there is a user with the same name among the currently logged-in users,
-                     if so, ask the user to change the username
-             */
             username = input.get();
+            try {
+                Socket client = new Socket(HOST, PORT);
+                new Thread(new Controller.ServerHandler(client)).start();
+                // Create input and output streams
+                in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+                out = new PrintWriter(client.getOutputStream(), true);
+                // Send the username to the server
+                out.println(username);
+//                String message;
+//                while ((message = in.readLine()) != null) {
+//                    out.println(message);
+//                }
+//                in.close();
+//                out.close();
+//                client.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         } else {
             System.out.println("Invalid username " + input + ", exiting");
             Platform.exit();
@@ -138,6 +159,29 @@ public class Controller implements Initializable {
                     setGraphic(wrapper);
                 }
             };
+        }
+    }
+
+    private static class ServerHandler implements Runnable {
+        private final Socket client;
+
+        public ServerHandler(Socket client) {
+            this.client = client;
+        }
+
+        public void run() {
+            try {
+                BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+
+                String message;
+                while ((message = in.readLine()) != null) {
+                    System.out.println(message);
+                }
+
+                in.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 }
