@@ -15,6 +15,17 @@ public class ChatServer {
             while (true) {
                 Socket client = server.accept();
                 ChatHandler handler = new ChatHandler(client);
+                boolean uniqueNameCheck = true;
+                for (ChatHandler it: handlers) {
+                    if (handler.getUsername().equals(it.getUsername())) {
+                        uniqueNameCheck = false;
+                        break;
+                    }
+                }
+                if (!uniqueNameCheck) {
+                    handler.sendMessage("Duplicate UserName!");
+                    continue;
+                }
                 handlers.add(handler);
                 handler.start();
             }
@@ -38,9 +49,12 @@ class ChatHandler extends Thread {
     private PrintWriter out;
     private String username;
 
+    public String getUsername() {
+        return username;
+    }
+
     public ChatHandler(Socket socket) {
         client = socket;
-
         try {
             in = new BufferedReader(new InputStreamReader(client.getInputStream()));
             out = new PrintWriter(client.getOutputStream(), true);

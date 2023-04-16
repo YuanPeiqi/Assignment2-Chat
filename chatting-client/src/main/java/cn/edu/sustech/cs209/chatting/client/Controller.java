@@ -111,8 +111,7 @@ public class Controller implements Initializable {
     }
 
     /**
-     * Sends the message to the <b>currently selected</b> chat.
-     * <p>
+     * Sends the message to the currently selected chat.
      * Blank messages are not allowed.
      * After sending the message, you should clear the text input field.
      */
