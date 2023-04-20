@@ -1,6 +1,7 @@
 package cn.edu.sustech.cs209.chatting.client;
 
 import cn.edu.sustech.cs209.chatting.common.Message;
+import cn.edu.sustech.cs209.chatting.common.Util;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -8,6 +9,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import javafx.util.Callback;
@@ -18,19 +20,40 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.URL;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.ResourceBundle;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 public class Controller implements Initializable {
     @FXML
-    ListView<Message> chatContentList;
-    private String username;
-    private static final String HOST = "localhost";
-    private static final int PORT = 8888;
+    public ListView<Message> chatContentList;
+    public ListView<ChatItem> chatList;
+    public TextArea inputArea;
+    public Label currentUsername;
+    public Label currentOnlineCnt;
+    public Label currentChatTitle;
     private BufferedReader in;
     private PrintWriter out;
+    private String username;
+    private String chatTitle;
+    private HashMap<String, String> privateAvatarMap = new HashMap<>();
+    private String groupLogoPath = "C:\\Users\\Administrator\\Desktop\\Assignment2-Chat\\chatting-client\\src\\main\\resources\\cn\\edu\\sustech\\cs209\\chatting\\client\\groupAvatar\\group.png";
+    private boolean isGroup;
+    private final String HOST = "localhost";
+    private final int PORT = 8888;
+    private List<String> clientsList = new ArrayList<>();
+
+    public List<String> getClientList() {
+        return clientsList;
+    }
+
+    public void setClientList(List<String> clients) {
+        this.clientsList = clients;
+    }
+
+    private void sendToServer(Message message) {
+        out.println(message.toString());
+    }
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -42,15 +65,35 @@ public class Controller implements Initializable {
 
         Optional<String> input = dialog.showAndWait();
         if (input.isPresent() && !input.get().isEmpty()) {
-            username = input.get();
+            this.username = input.get();
+            this.currentUsername.setText(String.format("Current User: %s", this.username));
+            this.chatTitle = "";
+            // FIXME: 头像完全一样
             try {
                 Socket client = new Socket(HOST, PORT);
-                new Thread(new Controller.ServerHandler(client)).start();
                 // Create input and output streams
                 in = new BufferedReader(new InputStreamReader(client.getInputStream()));
                 out = new PrintWriter(client.getOutputStream(), true);
                 // Send the username to the server
-                out.println(username);
+                Message requestJoinMsg = new Message(Message.REQUEST_TO_JOIN, this.username, "SERVER", System.currentTimeMillis(), Message.REQUEST_TO_JOIN);
+                sendToServer(requestJoinMsg);
+                String msg_str;
+                boolean allowToJoin = true;
+                while ((msg_str = in.readLine()) != null) {
+                    if (msg_str.startsWith(Message.ERROR_DUPLICATE_USERNAME)) {
+                        System.out.println("Duplicate username: " + this.username + ", exiting");
+                        allowToJoin = false;
+                        in.close();
+                        out.close();
+                        client.close();
+                        Platform.exit();
+                        break;
+                    }
+                    else if (msg_str.startsWith(Message.ALLOW_TO_JOIN)) {
+                        break;
+                    }
+                }
+                if (allowToJoin) { new Thread(new Controller.MessageHandler(client)).start(); }
 //                String message;
 //                while ((message = in.readLine()) != null) {
 //                    out.println(message);
@@ -69,31 +112,60 @@ public class Controller implements Initializable {
         chatContentList.setCellFactory(new MessageCellFactory());
     }
 
+    private void requestPrivateChat(String title){
+        Message requestPrivateChatMessage = new Message(Message.REQUEST_PRIVATE_CHAT, this.username, this.chatTitle, System.currentTimeMillis(), title);
+        sendToServer(requestPrivateChatMessage);
+    }
+
     @FXML
     public void createPrivateChat() {
         AtomicReference<String> user = new AtomicReference<>();
-
         Stage stage = new Stage();
+        stage.setTitle("Choose a user to chat!");
+        stage.setWidth(400.0);
         ComboBox<String> userSel = new ComboBox<>();
-
+        userSel.setPrefWidth(200.0);
         // FIXME: get the user list from server, the current user's name should be filtered out
-        userSel.getItems().addAll("Item 1", "Item 2", "Item 3");
-
+        synchronized (this) {
+            userSel.getItems().addAll(getClientList());
+        }
         Button okBtn = new Button("OK");
         okBtn.setOnAction(e -> {
             user.set(userSel.getSelectionModel().getSelectedItem());
             stage.close();
         });
-
         HBox box = new HBox(10);
         box.setAlignment(Pos.CENTER);
         box.setPadding(new Insets(20, 20, 20, 20));
         box.getChildren().addAll(userSel, okBtn);
         stage.setScene(new Scene(box));
         stage.showAndWait();
-
-        // TODO: if the current user already chatted with the selected user, just open the chat with that user
         // TODO: otherwise, create a new chat item in the left panel, the title should be the selected user's name
+        // Get the selected user name
+        String selectedUser = user.get();
+        if(selectedUser != null && !selectedUser.equals("")){
+            this.chatTitle = selectedUser;
+            this.currentChatTitle.setText(selectedUser);
+            this.isGroup = false;
+            boolean chatItemExists = false;
+            for (Object item : chatList.getItems()) {
+                if (item instanceof ChatItem && ((ChatItem) item).getTitle().equals(selectedUser)) {
+                    chatItemExists = true;
+                    break;
+                }
+            }
+            if (!chatItemExists) {
+                ChatItem newChatItem = new ChatItem(selectedUser, Util.time2String(), this.privateAvatarMap.get(selectedUser), false);
+                this.chatList.getItems().add(newChatItem);
+            }
+            requestPrivateChat(this.chatTitle);
+        }
+
+    }
+
+    private void requestGroupChat(String usersAndTitle){
+        Message requestGroupChatMessage = new Message(Message.REQUEST_GROUP_CHAT, this.username, this.chatTitle, System.currentTimeMillis(), usersAndTitle);
+        sendToServer(requestGroupChatMessage);
     }
 
     /**
@@ -108,8 +180,68 @@ public class Controller implements Initializable {
      */
     @FXML
     public void createGroupChat() {
+        String usersAndTitle = showGroupChatConfigDialog();
+        if (usersAndTitle != null) {
+            String groupTitle = usersAndTitle.split("@")[1];
+            String userListStr = usersAndTitle.split("@")[0];
+            this.chatTitle = groupTitle;
+            this.isGroup = true;
+            this.currentChatTitle.setText(groupTitle + "(Group Chat)");
+            boolean chatItemExists = false;
+            for (Object item : chatList.getItems()) {
+                if (item instanceof ChatItem && ((ChatItem) item).getTitle().equals(groupTitle + "(Group Chat)")) {
+                    chatItemExists = true;
+                    break;
+                }
+            }
+            if (!chatItemExists) {
+                ChatItem newChatItem = new ChatItem(groupTitle + "(Group Chat)", Util.time2String(), this.groupLogoPath, true);
+                this.chatList.getItems().add(newChatItem);
+            }
+            requestGroupChat(userListStr);
+        }
     }
 
+    private String showGroupChatConfigDialog() {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Create Group Chat");
+        dialog.setHeaderText("Please enter a group chat name and select users");
+
+        ButtonType createButtonType = new ButtonType("确定", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(createButtonType, ButtonType.CANCEL);
+
+        TextField groupTitleField = new TextField();
+
+        CheckBox[] userCheckBoxes = new CheckBox[this.clientsList.size()];
+        for (int i = 0; i < this.clientsList.size(); i++) {
+            userCheckBoxes[i] = new CheckBox(this.clientsList.get(i));
+        }
+        GridPane contentPane = new GridPane();
+        contentPane.setHgap(10);
+        contentPane.setVgap(10);
+        contentPane.setPadding(new Insets(20));
+        contentPane.addRow(0, new Label("Chat title:"), groupTitleField);
+        contentPane.addRow(2, new Label("Select users:"));
+        for (int i = 0; i < userCheckBoxes.length; i++) {
+            contentPane.addRow(i + 3, userCheckBoxes[i]);
+        }
+        dialog.getDialogPane().setContent(contentPane);
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == createButtonType && groupTitleField.getText() != null && !groupTitleField.getText().equals("")) {
+                StringBuilder selectedUsers = new StringBuilder(this.username);
+                for (CheckBox checkBox : userCheckBoxes) {
+                    if (checkBox.isSelected()) {
+                        selectedUsers.append(",").append(checkBox.getText());
+                    }
+                }
+                return selectedUsers + "@" + groupTitleField.getText();
+            }
+            return null;
+        });
+        Optional<String> result = dialog.showAndWait();
+        return result.orElse(null);
+    }
     /**
      * Sends the message to the currently selected chat.
      * Blank messages are not allowed.
@@ -117,7 +249,13 @@ public class Controller implements Initializable {
      */
     @FXML
     public void doSendMessage() {
-        // TODO
+        String content = inputArea.getText();
+        inputArea.setText("");
+        String header = this.isGroup? Message.SEND_GROUP_MESSAGE:Message.SEND_PRIVATE_MESSAGE;
+        if (content != null && content.length() > 0){
+            Message msg = new Message(header, this.username, this.chatTitle, System.currentTimeMillis(), content);
+            sendToServer(msg);
+        }
     }
 
     /**
@@ -128,32 +266,17 @@ public class Controller implements Initializable {
         @Override
         public ListCell<Message> call(ListView<Message> param) {
             return new ListCell<Message>() {
-
                 @Override
                 public void updateItem(Message msg, boolean empty) {
                     super.updateItem(msg, empty);
                     if (empty || Objects.isNull(msg)) {
+                        setText(null);
+                        setGraphic(null);
                         return;
                     }
-
-                    HBox wrapper = new HBox();
-                    Label nameLabel = new Label(msg.getSentBy());
-                    Label msgLabel = new Label(msg.getData());
-
-                    nameLabel.setPrefSize(50, 20);
-                    nameLabel.setWrapText(true);
-                    nameLabel.setStyle("-fx-border-color: black; -fx-border-width: 1px;");
-
-                    if (username.equals(msg.getSentBy())) {
-                        wrapper.setAlignment(Pos.TOP_RIGHT);
-                        wrapper.getChildren().addAll(msgLabel, nameLabel);
-                        msgLabel.setPadding(new Insets(0, 20, 0, 0));
-                    } else {
-                        wrapper.setAlignment(Pos.TOP_LEFT);
-                        wrapper.getChildren().addAll(nameLabel, msgLabel);
-                        msgLabel.setPadding(new Insets(0, 0, 0, 20));
-                    }
-
+                    MessageItem wrapper = new MessageItem(Controller.this.privateAvatarMap.get(msg.getSender()),
+                            msg.getSender() + " " + Util.time2String(msg.getTimestamp()),
+                            msg.getContent(), !msg.getSender().equals(Controller.this.username));
                     setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
                     setGraphic(wrapper);
                 }
@@ -161,10 +284,10 @@ public class Controller implements Initializable {
         }
     }
 
-    private static class ServerHandler implements Runnable {
+    private class MessageHandler implements Runnable {
         private final Socket client;
 
-        public ServerHandler(Socket client) {
+        public MessageHandler(Socket client) {
             this.client = client;
         }
 
@@ -174,9 +297,55 @@ public class Controller implements Initializable {
 
                 String message;
                 while ((message = in.readLine()) != null) {
+                    if (message.startsWith(Message.UPDATE_CLIENT_LIST)) {
+                        List<String> tmp = new ArrayList<>(Arrays.asList(Message.parse(message).getContent().split(",")));
+                        List<String> usernameTmpList = new ArrayList<>();
+                        int currentUserCnt = tmp.size();
+                        Platform.runLater(() -> Controller.this.currentOnlineCnt.setText("Online: " + currentUserCnt));
+                        for (String s: tmp) {
+                            String name = s.split(":")[0];
+                            String avatar = s.split(":")[1];
+                            Controller.this.privateAvatarMap.put(name, "C:\\Users\\Administrator\\Desktop\\Assignment2-Chat\\chatting-client\\src\\main\\resources\\cn\\edu\\sustech\\cs209\\chatting\\client\\privateAvatar\\" + avatar + ".png");
+                            usernameTmpList.add(name);
+                        }
+                        usernameTmpList.remove(Controller.this.username);
+                        synchronized (Controller.this) {
+                            setClientList(usernameTmpList);
+                        }
+                    }
+                    else if (message.startsWith(Message.RESPONSE_PRIVATE_CHAT)) {
+                        List<Message> msgList = Arrays.stream(Message.parseForResponse(message).getContent().split(Message.MSG_DELIMITER)).sequential()
+                                .filter(s -> s != null&&!s.equals("")).map(Message::parse).collect(Collectors.toList());
+                        if (!isGroup) {
+                            String currentChatKey = Util.getKey(Controller.this.username, Controller.this.chatTitle);
+                            if (msgList.size() > 0 && currentChatKey.equals(Util.getKey(msgList.get(0).getSender(), msgList.get(0).getReceiver()))) {
+                                Platform.runLater(() -> {
+                                    Controller.this.chatContentList.getItems().clear();
+                                    Controller.this.chatContentList.getItems().addAll(msgList);
+                                });
+                            }
+                            else if (msgList.size() == 0) {
+                                Controller.this.chatContentList.getItems().clear();
+                            }
+                        }
+                    }
+                    else if (message.startsWith(Message.RESPONSE_GROUP_CHAT)) {
+                        List<Message> msgList = Arrays.stream(Message.parseForResponse(message).getContent().split(Message.MSG_DELIMITER)).sequential()
+                                .filter(s -> s != null && !s.equals("")).map(Message::parse).collect(Collectors.toList());
+                        if (isGroup) {
+                            if (msgList.size() > 0 && Controller.this.chatTitle.equals(msgList.get(0).getReceiver())) {
+                                Platform.runLater(() -> {
+                                    Controller.this.chatContentList.getItems().clear();
+                                    Controller.this.chatContentList.getItems().addAll(msgList);
+                                });
+                            }
+                            else if (msgList.size() == 0) {
+                                Controller.this.chatContentList.getItems().clear();
+                            }
+                        }
+                    }
                     System.out.println(message);
                 }
-
                 in.close();
             } catch (IOException e) {
                 e.printStackTrace();

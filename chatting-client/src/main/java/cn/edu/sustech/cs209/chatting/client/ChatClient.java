@@ -7,7 +7,7 @@ import javafx.stage.Stage;
 
 import java.io.IOException;
 
-public class Main extends Application {
+public class ChatClient extends Application {
     public static void main(String[] args) {
         launch();
     }
@@ -16,7 +16,7 @@ public class Main extends Application {
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("main.fxml"));
         stage.setScene(new Scene(fxmlLoader.load()));
-        stage.setTitle("Chatting Client");
+        stage.setTitle("Chattery");
         stage.show();
     }
 }
