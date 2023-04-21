@@ -301,9 +301,8 @@ public class Controller implements Initializable {
     }
 
     public void shutdown() {
-        // TODO
-        Message leaveMessage = new Message(Message.LEAVE, this.username, "SERVER", System.currentTimeMillis(), "");
-        Platform.exit();
+        Message leaveMessage = new Message(Message.REQUEST_TO_LEAVE, this.username, "SERVER", System.currentTimeMillis(), "");
+        sendToServer(leaveMessage);
     }
 
     private class MessageHandler implements Runnable {
@@ -319,7 +318,10 @@ public class Controller implements Initializable {
 
                 String message;
                 while ((message = in.readLine()) != null) {
-                    if (message.startsWith(Message.UPDATE_CLIENT_LIST)) {
+                    if (message.startsWith(Message.ALLOW_TO_LEAVE)) {
+                        break;
+                    }
+                    else if (message.startsWith(Message.UPDATE_CLIENT_LIST)) {
                         List<String> tmp = new ArrayList<>(Arrays.asList(Message.parse(message).getContent().split(",")));
                         List<String> usernameTmpList = new ArrayList<>();
                         int currentUserCnt = tmp.size();
@@ -369,6 +371,9 @@ public class Controller implements Initializable {
                     System.out.println(message);
                 }
                 in.close();
+                System.out.println("Controller closed.");
+                System.out.println("MessageHandler closed.");
+                Platform.exit();
             } catch (IOException e) {
                 e.printStackTrace();
             }

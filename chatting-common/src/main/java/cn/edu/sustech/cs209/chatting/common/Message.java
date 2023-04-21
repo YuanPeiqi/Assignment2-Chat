@@ -13,7 +13,6 @@ public class Message {
     public static final String MSG_DELIMITER = "%MSG_DELIMITER%";
     public static final String DELIMITER_FOR_NEW_LINE = "%NEW_LINE%";
     public static final String UPDATE_CLIENT_LIST = "UPDATE_CLIENT_LIST";
-    public static final String LEAVE = "LEAVE";
     public static final String SYSTEM_INFO = "SYSTEM";
     public static final String REQUEST_PRIVATE_CHAT = "REQUEST_PRIVATE_CHAT";
     public static final String REQUEST_GROUP_CHAT = "REQUEST_GROUP_CHAT";
@@ -21,8 +20,9 @@ public class Message {
     public static final String RESPONSE_GROUP_CHAT = "RESPONSE_GROUP_CHAT";
     public static final String SEND_PRIVATE_MESSAGE = "SEND_PRIVATE_MESSAGE";
     public static final String SEND_GROUP_MESSAGE = "SEND_GROUP_MESSAGE";
-
     public static final String ERROR_DUPLICATE_USERNAME = "DUPLICATE_USERNAME";
+    public static final String REQUEST_TO_LEAVE = "REQUEST_TO_LEAVE";
+    public static final String ALLOW_TO_LEAVE = "ALLOW_TO_LEAVE";
     public static final String REQUEST_TO_JOIN = "REQUEST_TO_JOIN";
     public static final String ALLOW_TO_JOIN = "ALLOW_TO_JOIN";
     public Message(String command, String sender, String receiver, Long timestamp, String content) {

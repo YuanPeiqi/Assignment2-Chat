@@ -133,14 +133,20 @@ public class ChatServer {
                         }
                         sendGroupMessageHistory(title);
                     }
+                    else if (message.startsWith(Message.REQUEST_TO_LEAVE)) {
+                        sendMessage(Message.ALLOW_TO_LEAVE);
+                        removeClient(this);
+                        ChatServer.broadcast(Message.SYSTEM_INFO, username + " has left the chat room.");
+                        String usernameListStr = clients.stream().map(ChatServer.ClientThread::getUsername).map(x -> x + ":" + avatarMap.get(x)).collect(Collectors.joining(","));
+                        broadcast(Message.UPDATE_CLIENT_LIST, usernameListStr);
+                        break;
+                    }
                     System.out.println(message);
                 }
             } catch (IOException e) {
                 System.out.println("退出");
             } finally {
                 try {
-                    removeClient(this);
-                    ChatServer.broadcast(Message.SYSTEM_INFO, username + " has left the chat room.");
                     in.close();
                     out.close();
                     socket.close();
