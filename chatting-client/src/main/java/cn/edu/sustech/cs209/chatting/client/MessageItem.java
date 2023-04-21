@@ -1,5 +1,6 @@
 package cn.edu.sustech.cs209.chatting.client;
 
+import cn.edu.sustech.cs209.chatting.common.Message;
 import cn.edu.sustech.cs209.chatting.common.Util;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -22,16 +23,19 @@ public class MessageItem extends HBox {
 
     public MessageItem(String avatarImagePath, String info, String content, boolean isLeft) {
         this.avatarImageView = new ImageView(Util.getLocalFile(avatarImagePath));
-        this.infoLabel = new Label(info);
-        this.contentTextFlow = new TextFlow(new Text(content));
-
         this.avatarImageView.setFitWidth(40);
         this.avatarImageView.setFitHeight(40);
-        this.infoLabel.setFont(new Font(10));
-        this.infoLabel.setTextFill(Color.grayRgb(150));
+
+        this.contentTextFlow = new TextFlow(new Text(content.replace(Message.DELIMITER_FOR_NEW_LINE, "\r\n")));
+//        System.out.println(Arrays.stream(content.split(Message.DELIMITER_FOR_NEW_LINE)).sequential().map(Text::new).collect(Collectors.toList()));
+//        this.contentTextFlow.getChildren().addAll(Arrays.stream(content.split(Message.DELIMITER_FOR_NEW_LINE)).sequential().map(Text::new).collect(Collectors.toList()));
         this.contentTextFlow.setPrefWidth(300);
         this.contentTextFlow.setLineSpacing(5.0);
         this.contentTextFlow.setTextAlignment(TextAlignment.LEFT);
+
+        this.infoLabel = new Label(info);
+        this.infoLabel.setFont(new Font(10));
+        this.infoLabel.setTextFill(Color.grayRgb(150));
 
         VBox contentVBox = new VBox();
         contentVBox.setAlignment(isLeft? Pos.CENTER_LEFT:Pos.CENTER_RIGHT);

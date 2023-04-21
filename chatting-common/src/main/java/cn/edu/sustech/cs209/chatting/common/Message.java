@@ -1,16 +1,19 @@
 package cn.edu.sustech.cs209.chatting.common;
 
+import java.util.Arrays;
+
 public class Message {
     private final Long timestamp;
     private final String sender;
     private final String receiver;
     private final String content;
     private final String command;
-    public static final String DELIMITER = "::";
-    public static final String DELIMITER_FOR_RESPONSE = "%%";
-    public static final String MSG_DELIMITER = "@@";
+    public static final String DELIMITER = "%DELIMITER%";
+    public static final String DELIMITER_FOR_RESPONSE = "%DELIMITER_FOR_RESPONSE%";
+    public static final String MSG_DELIMITER = "%MSG_DELIMITER%";
+    public static final String DELIMITER_FOR_NEW_LINE = "%NEW_LINE%";
     public static final String UPDATE_CLIENT_LIST = "UPDATE_CLIENT_LIST";
-    public static final String LEAVE_COMMAND = "LEAVE";
+    public static final String LEAVE = "LEAVE";
     public static final String SYSTEM_INFO = "SYSTEM";
     public static final String REQUEST_PRIVATE_CHAT = "REQUEST_PRIVATE_CHAT";
     public static final String REQUEST_GROUP_CHAT = "REQUEST_GROUP_CHAT";
@@ -69,7 +72,9 @@ public class Message {
     }
 
     private static Message getMessage(String message, String delimiter) {
+        System.out.println("Message中接收到的的参数: " + message);
         String[] parts = message.split(delimiter);
+        System.out.println(Arrays.toString(parts));
         String command = parts[0];
         String sender = parts[1];
         String receiver = parts[2];

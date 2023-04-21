@@ -1,5 +1,7 @@
 package cn.edu.sustech.cs209.chatting.common;
 
+import javafx.scene.control.Alert;
+
 import java.io.File;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -45,5 +47,13 @@ public class Util {
         }
         Random r = new Random();
         return r.nextInt((max - min) + 1) + min;
+    }
+
+    public static void systemAlert(String title, String info) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(info);
+        alert.showAndWait();
     }
 }

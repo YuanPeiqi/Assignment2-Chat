@@ -32,11 +32,10 @@ public class Controller implements Initializable {
     public Label currentUsername;
     public Label currentOnlineCnt;
     public Label currentChatTitle;
-    private BufferedReader in;
     private PrintWriter out;
     private String username;
     private String chatTitle;
-    private HashMap<String, String> privateAvatarMap = new HashMap<>();
+    private final HashMap<String, String> privateAvatarMap = new HashMap<>();
     private String groupLogoPath = "C:\\Users\\Administrator\\Desktop\\Assignment2-Chat\\chatting-client\\src\\main\\resources\\cn\\edu\\sustech\\cs209\\chatting\\client\\groupAvatar\\group.png";
     private boolean isGroup;
     private final String HOST = "localhost";
@@ -67,12 +66,12 @@ public class Controller implements Initializable {
         if (input.isPresent() && !input.get().isEmpty()) {
             this.username = input.get();
             this.currentUsername.setText(String.format("Current User: %s", this.username));
+            this.inputArea.setWrapText(true);
             this.chatTitle = "";
-            // FIXME: 头像完全一样
             try {
                 Socket client = new Socket(HOST, PORT);
                 // Create input and output streams
-                in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+                BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
                 out = new PrintWriter(client.getOutputStream(), true);
                 // Send the username to the server
                 Message requestJoinMsg = new Message(Message.REQUEST_TO_JOIN, this.username, "SERVER", System.currentTimeMillis(), Message.REQUEST_TO_JOIN);
@@ -81,6 +80,7 @@ public class Controller implements Initializable {
                 boolean allowToJoin = true;
                 while ((msg_str = in.readLine()) != null) {
                     if (msg_str.startsWith(Message.ERROR_DUPLICATE_USERNAME)) {
+                        Util.systemAlert("提示", "用户名重复, 请重新进入聊天室");
                         System.out.println("Duplicate username: " + this.username + ", exiting");
                         allowToJoin = false;
                         in.close();
@@ -94,22 +94,17 @@ public class Controller implements Initializable {
                     }
                 }
                 if (allowToJoin) { new Thread(new Controller.MessageHandler(client)).start(); }
-//                String message;
-//                while ((message = in.readLine()) != null) {
-//                    out.println(message);
-//                }
-//                in.close();
-//                out.close();
-//                client.close();
+                if (allowToJoin) { chatContentList.setCellFactory(new MessageCellFactory()); }
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        } else {
+        }
+        else {
+            Util.systemAlert("提示", "用户名不能为空!");
             System.out.println("Invalid username " + input + ", exiting");
             Platform.exit();
         }
-
-        chatContentList.setCellFactory(new MessageCellFactory());
     }
 
     private void requestPrivateChat(String title){
@@ -156,6 +151,15 @@ public class Controller implements Initializable {
             }
             if (!chatItemExists) {
                 ChatItem newChatItem = new ChatItem(selectedUser, Util.time2String(), this.privateAvatarMap.get(selectedUser), false);
+                newChatItem.setOnMouseClicked(event -> {
+                    System.out.println("点击事件");
+//                    if (event.getClickCount() == 1) {
+//                        System.out.println("点击1次1");
+//                    }
+                    Controller.this.isGroup = false;
+                    Controller.this.chatTitle = newChatItem.getTitle();
+                    requestPrivateChat(Controller.this.chatTitle);
+                });
                 this.chatList.getItems().add(newChatItem);
             }
             requestPrivateChat(this.chatTitle);
@@ -196,6 +200,11 @@ public class Controller implements Initializable {
             }
             if (!chatItemExists) {
                 ChatItem newChatItem = new ChatItem(groupTitle + "(Group Chat)", Util.time2String(), this.groupLogoPath, true);
+                newChatItem.setOnMouseClicked(event -> {
+                    Controller.this.isGroup = true;
+                    Controller.this.chatTitle = newChatItem.getTitle().replace("(Group Chat)", "");
+                    requestPrivateChat(Controller.this.chatTitle);
+                });
                 this.chatList.getItems().add(newChatItem);
             }
             requestGroupChat(userListStr);
@@ -242,6 +251,7 @@ public class Controller implements Initializable {
         Optional<String> result = dialog.showAndWait();
         return result.orElse(null);
     }
+
     /**
      * Sends the message to the currently selected chat.
      * Blank messages are not allowed.
@@ -250,11 +260,17 @@ public class Controller implements Initializable {
     @FXML
     public void doSendMessage() {
         String content = inputArea.getText();
-        inputArea.setText("");
-        String header = this.isGroup? Message.SEND_GROUP_MESSAGE:Message.SEND_PRIVATE_MESSAGE;
-        if (content != null && content.length() > 0){
-            Message msg = new Message(header, this.username, this.chatTitle, System.currentTimeMillis(), content);
-            sendToServer(msg);
+        if(!content.replaceAll("(?!\\r)\\n", "").equals("")){
+            content = content.replaceAll("(?!\\r)\\n", Message.DELIMITER_FOR_NEW_LINE);
+            inputArea.setText("");
+            String header = this.isGroup? Message.SEND_GROUP_MESSAGE:Message.SEND_PRIVATE_MESSAGE;
+            if (content.length() > 0){
+                Message msg = new Message(header, this.username, this.chatTitle, System.currentTimeMillis(), content);
+                sendToServer(msg);
+            }
+        }
+        else {
+            Util.systemAlert("提示", "不能发送空消息!");
         }
     }
 
@@ -282,6 +298,12 @@ public class Controller implements Initializable {
                 }
             };
         }
+    }
+
+    public void shutdown() {
+        // TODO
+        Message leaveMessage = new Message(Message.LEAVE, this.username, "SERVER", System.currentTimeMillis(), "");
+        Platform.exit();
     }
 
     private class MessageHandler implements Runnable {
