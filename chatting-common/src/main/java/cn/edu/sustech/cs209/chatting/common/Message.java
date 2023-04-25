@@ -72,17 +72,13 @@ public class Message {
     }
 
     private static Message getMessage(String message, String delimiter) {
-        System.out.println("Message中接收到的的参数: " + message);
         String[] parts = message.split(delimiter);
         System.out.println(Arrays.toString(parts));
         String command = parts[0];
         String sender = parts[1];
         String receiver = parts[2];
         Long timestamp = Long.parseLong(parts[3]);
-        String content = "";
-        if (parts.length > 4) {
-            content = parts[4];
-        }
+        String content = parts.length > 4? parts[4]:"";
         return new Message(command, sender, receiver, timestamp, content);
     }
 }

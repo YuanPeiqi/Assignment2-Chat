@@ -21,11 +21,6 @@ public class ChatClient extends Application {
         stage.setTitle("Chattery");
         stage.show();
         Controller controller = fxmlLoader.getController();
-        stage.setOnCloseRequest(new EventHandler<WindowEvent>() {
-            @Override
-            public void handle(WindowEvent event) {
-                controller.shutdown();
-            }
-        });
+        stage.setOnCloseRequest(event -> controller.shutdown());
     }
 }

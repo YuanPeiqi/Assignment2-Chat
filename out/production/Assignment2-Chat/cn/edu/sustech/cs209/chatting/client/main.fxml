@@ -29,7 +29,7 @@
                 <padding>
                     <Insets bottom="20" left="20" right="20" top="20"/>
                 </padding>
-                <Label fx:id="currentChatTitle" text="群聊名称" textAlignment="CENTER" HBox.hgrow="ALWAYS">
+                <Label fx:id="currentChatTitle" textAlignment="CENTER" HBox.hgrow="ALWAYS">
                     <font>
                         <Font name="Microsoft YaHei" size="24.0"/>
                     </font>

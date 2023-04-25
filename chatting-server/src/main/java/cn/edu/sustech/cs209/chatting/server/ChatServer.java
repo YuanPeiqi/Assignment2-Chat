@@ -28,7 +28,7 @@ public class ChatServer {
             // noinspection InfiniteLoopStatement
             while (true) {
                 Socket socket = server.accept();
-                ChatServer.ClientThread client = new ClientThread(socket);
+                ClientThread client = new ClientThread(socket);
                 boolean uniqueNameCheck = true;
                 for (ClientThread it: ChatServer.clients) {
                     if (client.getUsername().equals(it.getUsername())) {
@@ -45,9 +45,7 @@ public class ChatServer {
                 Message successMsg = new Message(Message.ALLOW_TO_JOIN, "SERVER", client.username, System.currentTimeMillis(), Message.ALLOW_TO_JOIN);
                 client.sendMessage(successMsg.toString());
                 clients.add(client);
-                int a = Util.getRandomInteger(1, 9);
-                System.out.println(client.username + " " + a);
-                avatarMap.put(client.username, Integer.toString(a));
+                avatarMap.put(client.username, Integer.toString(Util.getRandomInteger(1, 9)));
                 client.start();
 
                 // 通知每个用户新增了client, 要求更新client列表
@@ -102,17 +100,17 @@ public class ChatServer {
                     if (message.startsWith(Message.SEND_PRIVATE_MESSAGE)) {
                         Message tmp = Message.parse(message);
                         String key = Util.getKey(tmp.getSender(), tmp.getReceiver());
-                        if (!privateMessageHistory.containsKey(key)) {
-                            privateMessageHistory.put(key, new ArrayList<>());
-                        }
+//                        if (!privateMessageHistory.containsKey(key)) {
+//                            privateMessageHistory.put(key, new ArrayList<>());
+//                        }
                         privateMessageHistory.get(key).add(tmp);
-                        sendPrivateMessageHistory(tmp, key);
+                        responsePrivateMessageHistory(tmp, key, true);
                     }
                     else if (message.startsWith(Message.SEND_GROUP_MESSAGE)) {
                         Message tmp = Message.parse(message);
                         String title = tmp.getReceiver();
                         groupMessageHistory.get(title).add(tmp);
-                        sendGroupMessageHistory(title);
+                        responseGroupMessageHistory(title, true);
                     }
                     else if (message.startsWith(Message.REQUEST_PRIVATE_CHAT)) {
                         Message tmp = Message.parse(message);
@@ -120,7 +118,7 @@ public class ChatServer {
                         if (!privateMessageHistory.containsKey(key)) {
                             privateMessageHistory.put(key, new ArrayList<>());
                         }
-                        sendPrivateMessageHistory(tmp, key);
+                        responsePrivateMessageHistory(tmp, key, false);
                     }
                     else if (message.startsWith(Message.REQUEST_GROUP_CHAT)) {
                         Message tmp = Message.parse(message);
@@ -131,12 +129,11 @@ public class ChatServer {
                             groupMessageHistory.put(title, new ArrayList<>());
                             groupMemberLists.put(title, userList);
                         }
-                        sendGroupMessageHistory(title);
+                        responseGroupMessageHistory(title, false);
                     }
                     else if (message.startsWith(Message.REQUEST_TO_LEAVE)) {
                         sendMessage(Message.ALLOW_TO_LEAVE);
                         removeClient(this);
-                        ChatServer.broadcast(Message.SYSTEM_INFO, username + " has left the chat room.");
                         String usernameListStr = clients.stream().map(ChatServer.ClientThread::getUsername).map(x -> x + ":" + avatarMap.get(x)).collect(Collectors.joining(","));
                         broadcast(Message.UPDATE_CLIENT_LIST, usernameListStr);
                         break;
@@ -144,7 +141,7 @@ public class ChatServer {
                     System.out.println(message);
                 }
             } catch (IOException e) {
-                System.out.println("退出");
+                System.out.println(username + "退出");
             } finally {
                 try {
                     in.close();
@@ -156,26 +153,34 @@ public class ChatServer {
             }
         }
 
-        private void sendPrivateMessageHistory(Message tmp, String key) {
+        private void responsePrivateMessageHistory(Message tmp, String key, boolean noticeAnother) {
             String msgListString = privateMessageHistory.get(key).stream().map(Message::toString).collect(Collectors.joining(Message.MSG_DELIMITER));
             Message responseToMsgSender = new Message(Message.RESPONSE_PRIVATE_CHAT, "SERVER", tmp.getSender(), System.currentTimeMillis(), msgListString);
             this.sendMessage(responseToMsgSender.toStringForResponse());
-            for (ClientThread ct: clients) {
-                if(ct.getUsername().equals(tmp.getReceiver())){
-                    Message responseToMsgReceiver = new Message(Message.RESPONSE_PRIVATE_CHAT, "SERVER", tmp.getReceiver(), System.currentTimeMillis(), msgListString);
-                    ct.sendMessage(responseToMsgReceiver.toStringForResponse());
-                    break;
+            // 需要提示另一位聊天对象
+            if(noticeAnother){
+                for (ClientThread ct: clients) {
+                    if(ct.getUsername().equals(tmp.getReceiver())){
+                        Message responseToMsgReceiver = new Message(Message.RESPONSE_PRIVATE_CHAT, "SERVER", tmp.getReceiver(), System.currentTimeMillis(), msgListString);
+                        ct.sendMessage(responseToMsgReceiver.toStringForResponse());
+                        break;
+                    }
                 }
             }
+
         }
 
-        private void sendGroupMessageHistory(String title) {
+        private void responseGroupMessageHistory(String title, boolean noticeOthers) {
             String msgListString = groupMessageHistory.get(title).stream().map(Message::toString).collect(Collectors.joining(Message.MSG_DELIMITER));
             ArrayList<String> memberList = groupMemberLists.get(title);
-            for (ClientThread ct: clients) {
-                if (memberList.contains(ct.getUsername())) {
-                    Message responseToMsgReceiver = new Message(Message.RESPONSE_GROUP_CHAT, "SERVER", ct.getUsername(), System.currentTimeMillis(), msgListString);
-                    ct.sendMessage(responseToMsgReceiver.toStringForResponse());
+            Message responseToMsgReceiver = new Message(Message.RESPONSE_GROUP_CHAT, "SERVER", this.username, System.currentTimeMillis(), msgListString);
+            this.sendMessage(responseToMsgReceiver.toStringForResponse());
+            if (noticeOthers) {
+                for (ClientThread ct : clients) {
+                    if (memberList.contains(ct.getUsername()) && !ct.getUsername().equals(this.username)) {
+                        responseToMsgReceiver = new Message(Message.RESPONSE_GROUP_CHAT, "SERVER", ct.getUsername(), System.currentTimeMillis(), msgListString);
+                        ct.sendMessage(responseToMsgReceiver.toStringForResponse());
+                    }
                 }
             }
         }

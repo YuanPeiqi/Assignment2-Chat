@@ -27,8 +27,6 @@ public class MessageItem extends HBox {
         this.avatarImageView.setFitHeight(40);
 
         this.contentTextFlow = new TextFlow(new Text(content.replace(Message.DELIMITER_FOR_NEW_LINE, "\r\n")));
-//        System.out.println(Arrays.stream(content.split(Message.DELIMITER_FOR_NEW_LINE)).sequential().map(Text::new).collect(Collectors.toList()));
-//        this.contentTextFlow.getChildren().addAll(Arrays.stream(content.split(Message.DELIMITER_FOR_NEW_LINE)).sequential().map(Text::new).collect(Collectors.toList()));
         this.contentTextFlow.setPrefWidth(300);
         this.contentTextFlow.setLineSpacing(5.0);
         this.contentTextFlow.setTextAlignment(TextAlignment.LEFT);
@@ -68,7 +66,6 @@ public class MessageItem extends HBox {
             messagePane.add(this.infoLabel, 0, 0);
             messagePane.add(contentVBox, 0, 1);
         }
-//        GridPane.setValignment(contentVBox, VPos.TOP);
         this.getChildren().add(messagePane);
     }
 }

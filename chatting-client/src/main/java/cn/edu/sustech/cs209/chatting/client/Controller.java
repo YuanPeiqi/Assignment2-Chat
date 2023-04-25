@@ -70,18 +70,16 @@ public class Controller implements Initializable {
             this.chatTitle = "";
             try {
                 Socket client = new Socket(HOST, PORT);
-                // Create input and output streams
-                BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
                 out = new PrintWriter(client.getOutputStream(), true);
                 // Send the username to the server
                 Message requestJoinMsg = new Message(Message.REQUEST_TO_JOIN, this.username, "SERVER", System.currentTimeMillis(), Message.REQUEST_TO_JOIN);
                 sendToServer(requestJoinMsg);
                 String msg_str;
                 boolean allowToJoin = true;
+                BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
                 while ((msg_str = in.readLine()) != null) {
                     if (msg_str.startsWith(Message.ERROR_DUPLICATE_USERNAME)) {
                         Util.systemAlert("提示", "用户名重复, 请重新进入聊天室");
-                        System.out.println("Duplicate username: " + this.username + ", exiting");
                         allowToJoin = false;
                         in.close();
                         out.close();
@@ -93,51 +91,30 @@ public class Controller implements Initializable {
                         break;
                     }
                 }
-                if (allowToJoin) { new Thread(new Controller.MessageHandler(client)).start(); }
-                if (allowToJoin) { chatContentList.setCellFactory(new MessageCellFactory()); }
-
+                if (allowToJoin) {
+                    new Thread(new Controller.MessageHandler(client)).start();
+                    chatContentList.setCellFactory(new MessageCellFactory());
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
         else {
             Util.systemAlert("提示", "用户名不能为空!");
-            System.out.println("Invalid username " + input + ", exiting");
             Platform.exit();
         }
     }
 
     private void requestPrivateChat(String title){
+        this.currentChatTitle.setText(this.chatTitle);
         Message requestPrivateChatMessage = new Message(Message.REQUEST_PRIVATE_CHAT, this.username, this.chatTitle, System.currentTimeMillis(), title);
         sendToServer(requestPrivateChatMessage);
     }
 
     @FXML
     public void createPrivateChat() {
-        AtomicReference<String> user = new AtomicReference<>();
-        Stage stage = new Stage();
-        stage.setTitle("Choose a user to chat!");
-        stage.setWidth(400.0);
-        ComboBox<String> userSel = new ComboBox<>();
-        userSel.setPrefWidth(200.0);
-        // FIXME: get the user list from server, the current user's name should be filtered out
-        synchronized (this) {
-            userSel.getItems().addAll(getClientList());
-        }
-        Button okBtn = new Button("OK");
-        okBtn.setOnAction(e -> {
-            user.set(userSel.getSelectionModel().getSelectedItem());
-            stage.close();
-        });
-        HBox box = new HBox(10);
-        box.setAlignment(Pos.CENTER);
-        box.setPadding(new Insets(20, 20, 20, 20));
-        box.getChildren().addAll(userSel, okBtn);
-        stage.setScene(new Scene(box));
-        stage.showAndWait();
-        // TODO: otherwise, create a new chat item in the left panel, the title should be the selected user's name
         // Get the selected user name
-        String selectedUser = user.get();
+        String selectedUser = showPrivateChatConfigDialog();
         if(selectedUser != null && !selectedUser.equals("")){
             this.chatTitle = selectedUser;
             this.currentChatTitle.setText(selectedUser);
@@ -152,63 +129,38 @@ public class Controller implements Initializable {
             if (!chatItemExists) {
                 ChatItem newChatItem = new ChatItem(selectedUser, Util.time2String(), this.privateAvatarMap.get(selectedUser), false);
                 newChatItem.setOnMouseClicked(event -> {
-                    System.out.println("点击事件");
-//                    if (event.getClickCount() == 1) {
-//                        System.out.println("点击1次1");
-//                    }
                     Controller.this.isGroup = false;
                     Controller.this.chatTitle = newChatItem.getTitle();
-                    requestPrivateChat(Controller.this.chatTitle);
+                    requestPrivateChat(this.chatTitle);
                 });
                 this.chatList.getItems().add(newChatItem);
             }
             requestPrivateChat(this.chatTitle);
         }
-
     }
 
-    private void requestGroupChat(String usersAndTitle){
-        Message requestGroupChatMessage = new Message(Message.REQUEST_GROUP_CHAT, this.username, this.chatTitle, System.currentTimeMillis(), usersAndTitle);
-        sendToServer(requestGroupChatMessage);
-    }
-
-    /**
-     * A new dialog should contain a multi-select list, showing all user's name.
-     * You can select several users that will be joined in the group chat, including yourself.
-     * <p>
-     * The naming rule for group chats is similar to WeChat:
-     * If there are > 3 users: display the first three usernames, sorted in lexicographic order, then use ellipsis with the number of users, for example:
-     * UserA, UserB, UserC... (10)
-     * If there are <= 3 users: do not display the ellipsis, for example:
-     * UserA, UserB (2)
-     */
-    @FXML
-    public void createGroupChat() {
-        String usersAndTitle = showGroupChatConfigDialog();
-        if (usersAndTitle != null) {
-            String groupTitle = usersAndTitle.split("@")[1];
-            String userListStr = usersAndTitle.split("@")[0];
-            this.chatTitle = groupTitle;
-            this.isGroup = true;
-            this.currentChatTitle.setText(groupTitle + "(Group Chat)");
-            boolean chatItemExists = false;
-            for (Object item : chatList.getItems()) {
-                if (item instanceof ChatItem && ((ChatItem) item).getTitle().equals(groupTitle + "(Group Chat)")) {
-                    chatItemExists = true;
-                    break;
-                }
-            }
-            if (!chatItemExists) {
-                ChatItem newChatItem = new ChatItem(groupTitle + "(Group Chat)", Util.time2String(), this.groupLogoPath, true);
-                newChatItem.setOnMouseClicked(event -> {
-                    Controller.this.isGroup = true;
-                    Controller.this.chatTitle = newChatItem.getTitle().replace("(Group Chat)", "");
-                    requestPrivateChat(Controller.this.chatTitle);
-                });
-                this.chatList.getItems().add(newChatItem);
-            }
-            requestGroupChat(userListStr);
+    private String showPrivateChatConfigDialog() {
+        AtomicReference<String> user = new AtomicReference<>();
+        Stage stage = new Stage();
+        stage.setTitle("Choose a user to chat!");
+        stage.setWidth(400.0);
+        ComboBox<String> userSel = new ComboBox<>();
+        userSel.setPrefWidth(200.0);
+        synchronized (this) {
+            userSel.getItems().addAll(getClientList());
         }
+        Button okBtn = new Button("OK");
+        okBtn.setOnAction(e -> {
+            user.set(userSel.getSelectionModel().getSelectedItem());
+            stage.close();
+        });
+        HBox box = new HBox(10);
+        box.setAlignment(Pos.CENTER);
+        box.setPadding(new Insets(20, 20, 20, 20));
+        box.getChildren().addAll(userSel, okBtn);
+        stage.setScene(new Scene(box));
+        stage.showAndWait();
+        return user.get();
     }
 
     private String showGroupChatConfigDialog() {
@@ -252,11 +204,41 @@ public class Controller implements Initializable {
         return result.orElse(null);
     }
 
-    /**
-     * Sends the message to the currently selected chat.
-     * Blank messages are not allowed.
-     * After sending the message, you should clear the text input field.
-     */
+    private void requestGroupChat(String usersAndTitle){
+        this.currentChatTitle.setText(this.chatTitle + "(Group Chat)");
+        Message requestGroupChatMessage = new Message(Message.REQUEST_GROUP_CHAT, this.username, this.chatTitle, System.currentTimeMillis(), usersAndTitle);
+        sendToServer(requestGroupChatMessage);
+    }
+
+    @FXML
+    public void createGroupChat() {
+        String usersAndTitle = showGroupChatConfigDialog();
+        if (usersAndTitle != null) {
+            String groupTitle = usersAndTitle.split("@")[1];
+            String userListStr = usersAndTitle.split("@")[0];
+            this.chatTitle = groupTitle;
+            this.isGroup = true;
+            this.currentChatTitle.setText(groupTitle + "(Group Chat)");
+            boolean chatItemExists = false;
+            for (Object item : chatList.getItems()) {
+                if (item instanceof ChatItem && ((ChatItem) item).getTitle().equals(groupTitle + "(Group Chat)")) {
+                    chatItemExists = true;
+                    break;
+                }
+            }
+            if (!chatItemExists) {
+                ChatItem newChatItem = new ChatItem(groupTitle + "(Group Chat)", Util.time2String(), this.groupLogoPath, true);
+                newChatItem.setOnMouseClicked(event -> {
+                    Controller.this.isGroup = true;
+                    Controller.this.chatTitle = newChatItem.getTitle().replace("(Group Chat)", "");
+                    requestPrivateChat(Controller.this.chatTitle);
+                });
+                this.chatList.getItems().add(newChatItem);
+            }
+            requestGroupChat(userListStr);
+        }
+    }
+
     @FXML
     public void doSendMessage() {
         String content = inputArea.getText();
@@ -274,10 +256,6 @@ public class Controller implements Initializable {
         }
     }
 
-    /**
-     * You may change the cell factory if you changed the design of {@code Message} model.
-     * Hint: you may also define a cell factory for the chats displayed in the left panel, or simply override the toString method.
-     */
     private class MessageCellFactory implements Callback<ListView<Message>, ListCell<Message>> {
         @Override
         public ListCell<Message> call(ListView<Message> param) {
@@ -340,6 +318,10 @@ public class Controller implements Initializable {
                     else if (message.startsWith(Message.RESPONSE_PRIVATE_CHAT)) {
                         List<Message> msgList = Arrays.stream(Message.parseForResponse(message).getContent().split(Message.MSG_DELIMITER)).sequential()
                                 .filter(s -> s != null&&!s.equals("")).map(Message::parse).collect(Collectors.toList());
+                        String chatObj = "";
+                        if (msgList.size()>0){
+                            chatObj = msgList.get(0).getReceiver().equals(Controller.this.username)? msgList.get(0).getSender():msgList.get(0).getReceiver();
+                        }
                         if (!isGroup) {
                             String currentChatKey = Util.getKey(Controller.this.username, Controller.this.chatTitle);
                             if (msgList.size() > 0 && currentChatKey.equals(Util.getKey(msgList.get(0).getSender(), msgList.get(0).getReceiver()))) {
@@ -351,6 +333,14 @@ public class Controller implements Initializable {
                             else if (msgList.size() == 0) {
                                 Controller.this.chatContentList.getItems().clear();
                             }
+                            else {
+                                // 判断聊天对象是否存在于chatList中
+                                if(!chatObj.equals("")) checkChatExists(chatObj);
+                            }
+                        }
+                        else {
+                            // 判断聊天对象是否存在于chatList中
+                            if(!chatObj.equals("")) checkChatExists(chatObj);
                         }
                     }
                     else if (message.startsWith(Message.RESPONSE_GROUP_CHAT)) {
@@ -371,12 +361,36 @@ public class Controller implements Initializable {
                     System.out.println(message);
                 }
                 in.close();
-                System.out.println("Controller closed.");
-                System.out.println("MessageHandler closed.");
                 Platform.exit();
             } catch (IOException e) {
-                e.printStackTrace();
+                Platform.runLater(() -> {
+                    Util.systemAlert("提示", "服务器已关闭, 请关闭客户端");
+                });
             }
+        }
+
+        private void checkChatExists(String chatObj) {
+            boolean chatItemExists = false;
+            for (Object item : chatList.getItems()) {
+                if (item instanceof ChatItem && ((ChatItem) item).getTitle().equals(chatObj)) {
+                    chatItemExists = true;
+                    break;
+                }
+            }
+            if (!chatItemExists) {
+                ChatItem newChatItem = new ChatItem(chatObj, Util.time2String(), Controller.this.privateAvatarMap.get(chatObj), false);
+                newChatItem.setOnMouseClicked(event -> {
+                    Controller.this.isGroup = false;
+                    Controller.this.chatTitle = newChatItem.getTitle();
+                    requestPrivateChat(Controller.this.chatTitle);
+                });
+                Platform.runLater(() -> {
+                    Controller.this.chatList.getItems().add(newChatItem);
+                });
+            }
+            Platform.runLater(() -> {
+                Util.systemAlert("提示", chatObj + "发送了一条新消息");
+            });
         }
     }
 }
