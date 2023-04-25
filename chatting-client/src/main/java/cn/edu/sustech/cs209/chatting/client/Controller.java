@@ -96,7 +96,7 @@ public class Controller implements Initializable {
                     chatContentList.setCellFactory(new MessageCellFactory());
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                System.out.println("Exception Caught");
             }
         }
         else {

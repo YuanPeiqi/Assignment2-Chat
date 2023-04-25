@@ -53,7 +53,7 @@ public class ChatServer {
                 broadcast(Message.UPDATE_CLIENT_LIST, usernameListStr);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Exception Caught");
         }
     }
 
@@ -82,7 +82,7 @@ public class ChatServer {
                 out = new PrintWriter(socket.getOutputStream(), true);
                 username = Message.parse(in.readLine()).getSender();
             } catch (IOException e) {
-                e.printStackTrace();
+                System.out.println("Exception Caught");
             }
         }
 
@@ -148,7 +148,7 @@ public class ChatServer {
                     out.close();
                     socket.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    System.out.println("Exception Caught");
                 }
             }
         }
