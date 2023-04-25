@@ -2,7 +2,6 @@ package cn.edu.sustech.cs209.chatting.server;
 
 import cn.edu.sustech.cs209.chatting.common.Message;
 import cn.edu.sustech.cs209.chatting.common.Util;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -21,6 +20,7 @@ public class ChatServer {
     private static final HashMap<String, ArrayList<Message>> privateMessageHistory = new HashMap<>();
     private static final HashMap<String, ArrayList<Message>> groupMessageHistory = new HashMap<>();
     private static final HashMap<String, ArrayList<String>> groupMemberLists = new HashMap<>();
+
     public static void main(String[] args) {
         try {
             ServerSocket server = new ServerSocket(PORT);
@@ -30,7 +30,7 @@ public class ChatServer {
                 Socket socket = server.accept();
                 ClientThread client = new ClientThread(socket);
                 boolean uniqueNameCheck = true;
-                for (ClientThread it: ChatServer.clients) {
+                for (ClientThread it : ChatServer.clients) {
                     if (client.getUsername().equals(it.getUsername())) {
                         uniqueNameCheck = false;
                         break;
@@ -49,7 +49,8 @@ public class ChatServer {
                 client.start();
 
                 // 通知每个用户新增了client, 要求更新client列表
-                String usernameListStr = clients.stream().map(ChatServer.ClientThread::getUsername).map(x -> x + ":" + avatarMap.get(x)).collect(Collectors.joining(","));
+                String usernameListStr = clients.stream().map(ChatServer.ClientThread::getUsername)
+                        .map(x -> x + ":" + avatarMap.get(x)).collect(Collectors.joining(","));
                 broadcast(Message.UPDATE_CLIENT_LIST, usernameListStr);
             }
         } catch (IOException e) {
@@ -159,8 +160,8 @@ public class ChatServer {
             this.sendMessage(responseToMsgSender.toStringForResponse());
             // 需要提示另一位聊天对象
             if(noticeAnother){
-                for (ClientThread ct: clients) {
-                    if(ct.getUsername().equals(tmp.getReceiver())){
+                for (ClientThread ct : clients) {
+                    if (ct.getUsername().equals(tmp.getReceiver())){
                         Message responseToMsgReceiver = new Message(Message.RESPONSE_PRIVATE_CHAT, "SERVER", tmp.getReceiver(), System.currentTimeMillis(), msgListString);
                         ct.sendMessage(responseToMsgReceiver.toStringForResponse());
                         break;
@@ -171,7 +172,8 @@ public class ChatServer {
         }
 
         private void responseGroupMessageHistory(String title, boolean noticeOthers) {
-            String msgListString = groupMessageHistory.get(title).stream().map(Message::toString).collect(Collectors.joining(Message.MSG_DELIMITER));
+            String msgListString = groupMessageHistory.get(title).stream().map(Message::toString)
+                    .collect(Collectors.joining(Message.MSG_DELIMITER));
             ArrayList<String> memberList = groupMemberLists.get(title);
             Message responseToMsgReceiver = new Message(Message.RESPONSE_GROUP_CHAT, "SERVER", this.username, System.currentTimeMillis(), msgListString);
             this.sendMessage(responseToMsgReceiver.toStringForResponse());

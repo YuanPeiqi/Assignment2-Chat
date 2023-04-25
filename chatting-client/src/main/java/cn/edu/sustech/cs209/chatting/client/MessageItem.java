@@ -36,7 +36,7 @@ public class MessageItem extends HBox {
         this.infoLabel.setTextFill(Color.grayRgb(150));
 
         VBox contentVBox = new VBox();
-        contentVBox.setAlignment(isLeft? Pos.CENTER_LEFT:Pos.CENTER_RIGHT);
+        contentVBox.setAlignment(isLeft ? Pos.CENTER_LEFT : Pos.CENTER_RIGHT);
         contentVBox.getChildren().add(this.contentTextFlow);
         contentVBox.setPadding(new Insets(2, 5, 2, 5));
         if (isLeft) {
@@ -47,12 +47,12 @@ public class MessageItem extends HBox {
         }
 
         VBox avatarVBox = new VBox();
-        avatarVBox.setAlignment(isLeft? Pos.TOP_LEFT:Pos.TOP_RIGHT);
+        avatarVBox.setAlignment(isLeft ? Pos.TOP_LEFT : Pos.TOP_RIGHT);
         avatarVBox.getChildren().add(this.avatarImageView);
         VBox.setVgrow(avatarVBox, Priority.ALWAYS);
 
         GridPane messagePane = new GridPane();
-        messagePane.setAlignment(isLeft? Pos.CENTER_LEFT:Pos.CENTER_RIGHT);
+        messagePane.setAlignment(isLeft ? Pos.CENTER_LEFT : Pos.CENTER_RIGHT);
         messagePane.setHgap(10);
         messagePane.setVgap(5);
         messagePane.setPadding(new Insets(5));
@@ -60,8 +60,7 @@ public class MessageItem extends HBox {
             messagePane.add(avatarVBox, 0, 0, 1, 2);
             messagePane.add(this.infoLabel, 1, 0);
             messagePane.add(contentVBox, 1, 1);
-        }
-        else {
+        } else {
             messagePane.add(avatarVBox, 1, 0, 1, 2);
             messagePane.add(this.infoLabel, 0, 0);
             messagePane.add(contentVBox, 0, 1);

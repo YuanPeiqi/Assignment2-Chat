@@ -15,7 +15,7 @@ public class ChatItem extends HBox {
     private Label title;
     private Label time;
     private boolean isGroup;
-    public ChatItem(String title, String time, String avatarImagePath, boolean isGroup){
+    public ChatItem(String title, String time, String avatarImagePath, boolean isGroup) {
         super(10); // spacing between children
 
         Image image = new Image(Util.getLocalFile(avatarImagePath));
@@ -40,18 +40,23 @@ public class ChatItem extends HBox {
     public void setTitle(String title) {
         this.title.setText(title);
     }
+
     public String getTitle() {
         return this.title.getText();
     }
+
     public void setTime(String time) {
         this.time.setText(time);
     }
+
     public String getTime() {
         return time.getText();
     }
+
     public boolean isGroup() {
         return isGroup;
     }
+
     public void setIsGroup(boolean group) {
         isGroup = group;
     }

@@ -25,6 +25,7 @@ public class Message {
     public static final String ALLOW_TO_LEAVE = "ALLOW_TO_LEAVE";
     public static final String REQUEST_TO_JOIN = "REQUEST_TO_JOIN";
     public static final String ALLOW_TO_JOIN = "ALLOW_TO_JOIN";
+
     public Message(String command, String sender, String receiver, Long timestamp, String content) {
         this.timestamp = timestamp;
         this.sender = sender;
@@ -78,7 +79,7 @@ public class Message {
         String sender = parts[1];
         String receiver = parts[2];
         Long timestamp = Long.parseLong(parts[3]);
-        String content = parts.length > 4? parts[4]:"";
+        String content = parts.length > 4 ? parts[4] : "";
         return new Message(command, sender, receiver, timestamp, content);
     }
 }

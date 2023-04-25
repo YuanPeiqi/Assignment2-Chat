@@ -115,7 +115,7 @@ public class Controller implements Initializable {
     public void createPrivateChat() {
         // Get the selected user name
         String selectedUser = showPrivateChatConfigDialog();
-        if(selectedUser != null && !selectedUser.equals("")){
+        if (selectedUser != null && !selectedUser.equals("")) {
             this.chatTitle = selectedUser;
             this.currentChatTitle.setText(selectedUser);
             this.isGroup = false;
@@ -204,7 +204,7 @@ public class Controller implements Initializable {
         return result.orElse(null);
     }
 
-    private void requestGroupChat(String usersAndTitle){
+    private void requestGroupChat(String usersAndTitle) {
         this.currentChatTitle.setText(this.chatTitle + "(Group Chat)");
         Message requestGroupChatMessage = new Message(Message.REQUEST_GROUP_CHAT, this.username, this.chatTitle, System.currentTimeMillis(), usersAndTitle);
         sendToServer(requestGroupChatMessage);
@@ -242,11 +242,11 @@ public class Controller implements Initializable {
     @FXML
     public void doSendMessage() {
         String content = inputArea.getText();
-        if(!content.replaceAll("(?!\\r)\\n", "").equals("")){
+        if (!content.replaceAll("(?!\\r)\\n", "").equals("")) {
             content = content.replaceAll("(?!\\r)\\n", Message.DELIMITER_FOR_NEW_LINE);
             inputArea.setText("");
-            String header = this.isGroup? Message.SEND_GROUP_MESSAGE:Message.SEND_PRIVATE_MESSAGE;
-            if (content.length() > 0){
+            String header = this.isGroup ? Message.SEND_GROUP_MESSAGE : Message.SEND_PRIVATE_MESSAGE;
+            if (content.length() > 0) {
                 Message msg = new Message(header, this.username, this.chatTitle, System.currentTimeMillis(), content);
                 sendToServer(msg);
             }
